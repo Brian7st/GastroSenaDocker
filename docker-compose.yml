@@ -1,0 +1,284 @@
+services:
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # INFRAESTRUCTURA COMPARTIDA
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: gastrosena-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks:
+      - gastrosena-net
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: gastrosena-zipkin
+    ports:
+      - "9411:9411"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:9411/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+    networks:
+      - gastrosena-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # BASES DE DATOS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  restaurante-db:
+    image: mysql:8.0
+    container_name: gastrosena-restaurante-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: modulo_restaurante
+    ports:
+      - "3308:3306"
+    volumes:
+      - restaurante_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - gastrosena-net
+
+  inventario-db:
+    image: mysql:8.0
+    container_name: gastrosena-inventario-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: inventario_v2
+      MYSQL_USER: inventario
+      MYSQL_PASSWORD: inventario
+    ports:
+      - "3307:3306"
+    volumes:
+      - inventario_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "inventario", "-pinventario"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - gastrosena-net
+
+  cocina-db:
+    image: mysql:8.0
+    container_name: gastrosena-cocina-db
+    environment:
+      MYSQL_ROOT_PASSWORD: "Carlos2515."
+      MYSQL_DATABASE: ProyectoFormativo
+    ports:
+      - "3309:3306"
+    volumes:
+      - cocina_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - gastrosena-net
+
+  barbarismo-db:
+    image: mysql:8.0
+    container_name: gastrosena-barbarismo-db
+    environment:
+      MYSQL_ROOT_PASSWORD: admin1
+      MYSQL_DATABASE: ProyectoFormativo
+    ports:
+      - "3310:3306"
+    volumes:
+      - barbarismo_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - gastrosena-net
+
+  usuarios-db:
+    image: mysql:8.0
+    container_name: gastrosena-usuarios-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: usuarios_db
+      MYSQL_USER: usuario_app
+      MYSQL_PASSWORD: clave_segura
+    ports:
+      - "3311:3306"
+    volumes:
+      - usuarios_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - gastrosena-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # MICROSERVICIOS BACKEND
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  restaurante:
+    image: eidertapasco/ga-ms-restaurante:latest
+    container_name: gastrosena-restaurante
+    environment:
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://restaurante-db:3306/modulo_restaurante?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+    ports:
+      - "8080:8080"
+    depends_on:
+      restaurante-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - gastrosena-net
+
+  inventario:
+    image: stiven77/ga-ms-inventario:latest
+    container_name: gastrosena-inventario
+    environment:
+      DB_URL: jdbc:mysql://inventario-db:3306/inventario_v2?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
+      DB_USERNAME: inventario
+      DB_PASSWORD: inventario
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_PROFILES_ACTIVE: default
+    ports:
+      - "8081:8081"
+    depends_on:
+      inventario-db:
+        condition: service_healthy
+      zipkin:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - gastrosena-net
+
+  cocina:
+    image: andres2515/ga-ms-cocina:latest
+    container_name: gastrosena-cocina
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://cocina-db:3306/ProyectoFormativo?createDatabaseIfNotExist=true&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "Carlos2515."
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      PORT: 8082
+    ports:
+      - "8082:8082"
+    depends_on:
+      cocina-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - gastrosena-net
+
+  barbarismo:
+    image: jhojanalvarez71/ga-ms-barbarismo:3.0
+    container_name: gastrosena-barbarismo
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://barbarismo-db:3306/ProyectoFormativo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: admin1
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+    ports:
+      - "8086:8086"
+    depends_on:
+      barbarismo-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - gastrosena-net
+
+  usuarios:
+    image: sofigarcia30/ga-ms-usuarios:latest
+    container_name: gastrosena-usuarios
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://usuarios-db:3306/usuarios_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: usuario_app
+      SPRING_DATASOURCE_PASSWORD: clave_segura
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8087:8081"
+    depends_on:
+      usuarios-db:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - gastrosena-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # FRONTEND
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  frontend:
+    image: stiven77/frontend-gastrosena:56a92f0
+    container_name: gastrosena-frontend
+    ports:
+      - "4200:4200"
+    depends_on:
+      - restaurante
+      - inventario
+      - cocina
+      - barbarismo
+      - usuarios
+    networks:
+      - gastrosena-net
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VOLÚMENES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+volumes:
+  restaurante_db_data:
+  inventario_db_data:
+  cocina_db_data:
+  barbarismo_db_data:
+  usuarios_db_data:
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RED
+# ═══════════════════════════════════════════════════════════════════════════════
+
+networks:
+  gastrosena-net:
+    driver: bridge
