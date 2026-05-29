@@ -1,6 +1,8 @@
 # GastroSENA — Guía de despliegue con Docker
 
-Este archivo levanta el sistema completo de GastroSENA: frontend, 5 microservicios backend, 5 bases de datos MySQL, RabbitMQ y Zipkin. **No necesitás tener ningún código fuente.** Todo se descarga automáticamente desde Docker Hub.
+Este repositorio levanta el sistema completo de GastroSENA: frontend, 5 microservicios backend, 5 bases de datos MySQL, RabbitMQ y Zipkin.
+
+> **Nota:** el frontend se construye localmente desde el código fuente. Los microservicios backend se descargan automáticamente desde Docker Hub.
 
 ---
 
@@ -47,7 +49,7 @@ GastroSENA
 
 | Servicio | Imagen |
 |---|---|
-| Frontend | `stiven77/frontend-gastrosena:56a92f0` |
+| Frontend | construida localmente desde `Dockerfile` |
 | Restaurante | `eidertapasco/ga-ms-restaurante:latest` |
 | Inventario | `stiven77/ga-ms-inventario:latest` |
 | Cocina | `andres2515/ga-ms-cocina:latest` |
@@ -58,32 +60,55 @@ GastroSENA
 
 ## Cómo levantar el sistema
 
-### 1. Abrí una terminal en esta carpeta
+### 1. Compilá el frontend
+
+Antes de construir la imagen, necesitás generar el build de producción de Angular. Desde la raíz del proyecto del frontend:
+
+```bash
+npx nx build restaurant-app --configuration=production
+```
+
+Esto genera el output en `dist/apps/restaurant-app/browser/`.
+
+### 2. Copiá el build a esta carpeta
+
+Copiá la carpeta `dist/` generada a la raíz de este repositorio (`GastrosenaDocker/`), de modo que quede así:
+
+```
+GastrosenaDocker/
+├── dist/
+│   └── apps/
+│       └── restaurant-app/
+│           └── browser/
+├── Dockerfile
+├── nginx.conf
+└── docker-compose.yml
+```
+
+### 3. Abrí una terminal en esta carpeta
 
 **Windows:** clic derecho sobre la carpeta `GastrosenaDocker` → "Abrir en Terminal"  
 **Mac/Linux:** `cd /ruta/a/GastrosenaDocker`
 
-### 2. Ejecutá el siguiente comando
+### 4. Ejecutá el siguiente comando
 
 ```bash
-docker compose up
+docker compose up --build
 ```
 
-La primera vez tarda varios minutos porque descarga todas las imágenes. Las siguientes veces es mucho más rápido.
-
-Para correrlo en segundo plano (sin ocupar la terminal):
+El flag `--build` le indica a Docker que construya la imagen del frontend antes de levantar los contenedores. Las siguientes veces solo es necesario si cambia el frontend; de lo contrario podés usar:
 
 ```bash
 docker compose up -d
 ```
 
-### 3. Esperá a que todo esté listo
+### 6. Esperá a que todo esté listo
 
 Vas a ver logs de cada servicio. El sistema está listo cuando dejes de ver errores de conexión y los backends digan que iniciaron correctamente.
 
 > Las bases de datos tardan ~30 segundos en estar disponibles. Los backends tienen reintentos automáticos, así que si ves algún error de conexión al inicio, es normal — se recuperan solos.
 
-### 4. Abrí la aplicación
+### 7. Abrí la aplicación
 
 Entrá a tu navegador y abrí:
 
