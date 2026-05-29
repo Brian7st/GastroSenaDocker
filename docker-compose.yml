@@ -256,9 +256,7 @@ services:
   # ═══════════════════════════════════════════════════════════════════════════
 
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: stiven77/frontend-gastrosena:latest
     container_name: gastrosena-frontend
     ports:
       - "4200:4200"
