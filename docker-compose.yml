@@ -212,7 +212,7 @@ services:
       - gastrosena-net
 
   barbarismo:
-    image: jhojanalvarez71/ga-ms-barbarismo:3.0
+    image: jhojanalvarez71/ga-ms-barbarismo:3.1
     container_name: gastrosena-barbarismo
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://barbarismo-db:3306/ProyectoFormativo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -252,6 +252,54 @@ services:
       - gastrosena-net
 
   # ═══════════════════════════════════════════════════════════════════════════
+  # REPORTES (ga-ms-reportes) — lee datos de los demás microservicios por la red
+  # Imagen local: construir con  ./mvnw -DskipTests package  +  docker build -t ga-ms-reportes:latest .
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  reportes-db:
+    image: mysql:8.0
+    container_name: gastrosena-reportes-db
+    environment:
+      MYSQL_ROOT_PASSWORD: "12345"
+      MYSQL_DATABASE: gastrosena_reportes
+    ports:
+      - "3312:3306"
+    volumes:
+      - reportes_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - gastrosena-net
+
+  reportes:
+    image: rodriguezramirezsebastian/ga-ms-reportes:latest
+    container_name: gastrosena-reportes
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://reportes-db:3306/gastrosena_reportes?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "12345"
+      # URLs por nombre de servicio dentro de la red Docker (no localhost)
+      SERVICES_RESTAURANTE_URL: http://restaurante:8080
+      SERVICES_INVENTARIO_URL: http://inventario:8081
+      SERVICES_COCINA_URL: http://cocina:8082
+      SERVICES_BARBARISMO_URL: http://barbarismo:8086
+      SERVICES_USUARIOS_URL: http://usuarios:8081
+    ports:
+      - "8083:8083"
+    depends_on:
+      reportes-db:
+        condition: service_healthy
+      usuarios:
+        condition: service_started
+    restart: on-failure
+    networks:
+      - gastrosena-net
+
+  # ═══════════════════════════════════════════════════════════════════════════
   # FRONTEND
   # ═══════════════════════════════════════════════════════════════════════════
 
@@ -266,6 +314,7 @@ services:
       - cocina
       - barbarismo
       - usuarios
+      - reportes
     networks:
       - gastrosena-net
 
@@ -279,6 +328,7 @@ volumes:
   cocina_db_data:
   barbarismo_db_data:
   usuarios_db_data:
+  reportes_db_data:
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # RED
