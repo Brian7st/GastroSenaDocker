@@ -276,7 +276,7 @@ services:
       - gastrosena-net
 
   reportes:
-    image: rodriguezramirezsebastian/ga-ms-reportes:latest
+    image: rodiguezramirezsebastian/ga-ms-reportes:latest
     container_name: gastrosena-reportes
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://reportes-db:3306/gastrosena_reportes?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
