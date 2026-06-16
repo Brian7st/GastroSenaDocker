@@ -238,7 +238,7 @@ services:
       - gastrosena-net
 
   usuarios:
-    image: rodiguezramirezsebastian/ga-ms-usuarios:latest
+    image: sofigarcia30/ga-ms-usuarios:latest
     container_name: gastrosena-usuarios
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://usuarios-db:3306/usuarios_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
