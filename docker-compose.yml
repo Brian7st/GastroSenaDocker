@@ -193,7 +193,7 @@ services:
       - gastrosena-net
 
   cocina:
-    image: gastrosenadocker-cocina:latest
+    image: andres2515/ga-ms-cocina:latest
     container_name: gastrosena-cocina
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://cocina-db:3306/ProyectoFormativo?createDatabaseIfNotExist=true&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
@@ -204,6 +204,9 @@ services:
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
       PORT: 8082
+      # Mismo secreto que firma usuarios. Sobreescribe el security.secret del
+      # application.yaml de cocina para que la validación de JWT cuadre.
+      SECURITY_SECRET: ${SECURITY_SECRET:?defina SECURITY_SECRET en GastroSenaDocker/.env}
     expose:
       - "8082"
     depends_on:
