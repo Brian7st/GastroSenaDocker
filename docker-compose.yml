@@ -171,9 +171,7 @@ services:
           - gastrosena
 
   inventario:
-    build:
-      context: ../ga-ms-inventario-1.1
-      dockerfile: Dockerfile
+    image: stiven77/ga-ms-inventario:latest
     container_name: gastrosena-inventario
     environment:
       DB_URL: jdbc:mysql://inventario-db:3306/inventario_v2?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
@@ -219,7 +217,7 @@ services:
       - gastrosena-net
 
   barbarismo:
-    image: gastrosenadocker-barbarismo:latest
+    image: jhojanalvarez71/ga-ms-barbarismo:3.1
     container_name: gastrosena-barbarismo
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://barbarismo-db:3306/ProyectoFormativo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -285,7 +283,7 @@ services:
       - gastrosena-net
 
   reportes:
-    image: gastrosenadocker-reportes:latest
+    image: rodiguezramirezsebastian/ga-ms-reportes:latest
     container_name: gastrosena-reportes
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://reportes-db:3306/gastrosena_reportes?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -316,7 +314,7 @@ services:
 
   gateway:
     build:
-      context: ../apiGatway-2/api-gateway
+      context: ../ApigatewayGastrosena/api-gateway
       dockerfile: Dockerfile
     container_name: gastrosena-gateway
     environment:
