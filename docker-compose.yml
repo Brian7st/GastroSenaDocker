@@ -205,8 +205,13 @@ services:
       # Mismo secreto que firma usuarios. Sobreescribe el security.secret del
       # application.yaml de cocina para que la validación de JWT cuadre.
       SECURITY_SECRET: ${SECURITY_SECRET:?defina SECURITY_SECRET en GastroSenaDocker/.env}
-    expose:
-      - "8082"
+      # Rol asumido cuando NO llega el header X-User-Rol (acceso directo a :8082
+      # sin pasar por el gateway). Vacío ("") = cerrado: en Swagger hay que declarar
+      # el rol con el botón Authorize (X-User-Rol). El menú público no se ve afectado.
+      SECURITY_DEV_FALLBACK_ROL: ""
+    # Publicado al host para acceder a Swagger directo: http://localhost:8082/swagger-ui/index.html
+    ports:
+      - "8082:8082"
     depends_on:
       cocina-db:
         condition: service_healthy
