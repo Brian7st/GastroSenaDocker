@@ -179,6 +179,8 @@ services:
       DB_PASSWORD: inventario
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
       SPRING_PROFILES_ACTIVE: default
+      # Microservicio de reportes: inventario le delega la generación de documentos (PDF del GIL).
+      INVENTORY_INTEGRATIONS_REPORTES_BASE_URL: http://reportes:8083
     expose:
       - "8081"
     depends_on:
