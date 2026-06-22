@@ -321,7 +321,7 @@ services:
 
   gateway:
     build:
-      context: ../ApigatewayGastrosena/api-gateway
+      context: ../apiGatway-2/api-gateway
       dockerfile: Dockerfile
     container_name: gastrosena-gateway
     environment:
