@@ -204,8 +204,10 @@ services:
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
       PORT: 8082
-      # cocina es gateway-trust: NO valida la firma del JWT, así que NO necesita
-      # SECURITY_SECRET. La identidad llega por headers X-User-* desde el gateway.
+      # cocina autentica por headers en runtime, pero su ga-lib-security pinneado
+      # construye JwtConfig incondicionalmente: el secreto DEBE resolverse al
+      # arrancar. Mismo valor que usuarios/gateway, inyectado desde .env.
+      SECURITY_SECRET: ${SECURITY_SECRET:?defina SECURITY_SECRET en GastroSenaDocker/.env}
       # Rol asumido cuando NO llega el header X-User-Rol (acceso directo a :8082
       # sin pasar por el gateway). Vacío ("") = cerrado: en Swagger hay que declarar
       # el rol con el botón Authorize (X-User-Rol). El menú público no se ve afectado.
