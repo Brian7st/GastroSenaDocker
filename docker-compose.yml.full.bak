@@ -171,7 +171,9 @@ services:
           - gastrosena
 
   inventario:
-    image: stiven77/ga-ms-inventario:latest
+    build:
+      context: ../ga-ms-inventario-1.1
+      dockerfile: Dockerfile
     container_name: gastrosena-inventario
     environment:
       DB_URL: jdbc:mysql://inventario-db:3306/inventario_v2?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
@@ -191,7 +193,7 @@ services:
       - gastrosena-net
 
   cocina:
-    image: andres2515/ga-ms-cocina:latest
+    image: gastrosenadocker-cocina:latest
     container_name: gastrosena-cocina
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://cocina-db:3306/ProyectoFormativo?createDatabaseIfNotExist=true&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
@@ -205,13 +207,8 @@ services:
       # Mismo secreto que firma usuarios. Sobreescribe el security.secret del
       # application.yaml de cocina para que la validación de JWT cuadre.
       SECURITY_SECRET: ${SECURITY_SECRET:?defina SECURITY_SECRET en GastroSenaDocker/.env}
-      # Rol asumido cuando NO llega el header X-User-Rol (acceso directo a :8082
-      # sin pasar por el gateway). Vacío ("") = cerrado: en Swagger hay que declarar
-      # el rol con el botón Authorize (X-User-Rol). El menú público no se ve afectado.
-      SECURITY_DEV_FALLBACK_ROL: ""
-    # Publicado al host para acceder a Swagger directo: http://localhost:8082/swagger-ui/index.html
-    ports:
-      - "8082:8082"
+    expose:
+      - "8082"
     depends_on:
       cocina-db:
         condition: service_healthy
@@ -222,7 +219,7 @@ services:
       - gastrosena-net
 
   barbarismo:
-    image: jhojanalvarez71/ga-ms-barbarismo:latest
+    image: gastrosenadocker-barbarismo:latest
     container_name: gastrosena-barbarismo
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://barbarismo-db:3306/ProyectoFormativo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -288,7 +285,7 @@ services:
       - gastrosena-net
 
   reportes:
-    image: rodiguezramirezsebastian/ga-ms-reportes:latest
+    image: gastrosenadocker-reportes:latest
     container_name: gastrosena-reportes
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://reportes-db:3306/gastrosena_reportes?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -319,7 +316,7 @@ services:
 
   gateway:
     build:
-      context: ../ApigatewayGastrosena/api-gateway
+      context: ../apiGatway-2/api-gateway
       dockerfile: Dockerfile
     container_name: gastrosena-gateway
     environment:
