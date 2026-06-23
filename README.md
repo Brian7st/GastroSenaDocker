@@ -53,7 +53,7 @@ GastroSENA
 | Restaurante | `eidertapasco/ga-ms-restaurante:latest` |
 | Inventario | `stiven77/ga-ms-inventario:latest` |
 | Cocina | `andres2515/ga-ms-cocina:latest` |
-| Barbarismo | `jhojanalvarez71/ga-ms-barbarismo:3.0` |
+| Barbarismo | `stiven77/frontend-gastrosena:latest` |
 | Usuarios | `sofigarcia30/ga-ms-usuarios:latest` |
 
 ---
