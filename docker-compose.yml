@@ -321,9 +321,7 @@ services:
   # ═══════════════════════════════════════════════════════════════════════════
 
   gateway:
-    build:
-      context: ../apiGatway-2/api-gateway
-      dockerfile: Dockerfile
+    image: stiven77/api-gateway:latest
     container_name: gastrosena-gateway
     environment:
       GATEWAY_PORT: 8088
