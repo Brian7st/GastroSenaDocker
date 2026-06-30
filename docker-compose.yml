@@ -194,6 +194,11 @@
       SPRING_PROFILES_ACTIVE: default
       # Microservicio de reportes: inventario le delega la generaciÃ³n de documentos (PDF del GIL).
       INVENTORY_INTEGRATIONS_REPORTES_BASE_URL: http://reportes:8083
+      # SMTP para enviar el GIL al proveedor por correo (valores en .env).
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     expose:
       - "8081"
     depends_on:
@@ -393,6 +398,26 @@
       - barbarismo
       - usuarios
       - reportes
+    networks:
+      - gastrosena-net
+
+  # ===========================================================================
+  # AGENTE IA (MCP + API HTTP) — asistente de consulta sobre los microservicios
+  # ===========================================================================
+  agente:
+    build:
+      context: ../AgenteGastrosena-ServeMcp
+    image: gastrosena/agente:latest
+    container_name: gastrosena-agente
+    env_file:
+      - ../AgenteGastrosena-ServeMcp/.env
+    ports:
+      - "9000:9000"
+    depends_on:
+      - inventario
+      - restaurante
+      - barbarismo
+    restart: unless-stopped
     networks:
       - gastrosena-net
 
