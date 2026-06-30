@@ -53,7 +53,7 @@ GastroSENA
 | Restaurante | `eidertapasco/ga-ms-restaurante:latest` |
 | Inventario | `stiven77/ga-ms-inventario:latest` |
 | Cocina | `andres2515/ga-ms-cocina:latest` |
-| Barbarismo | `jhojanalvarez71/ga-ms-barbarismo:3.0` |
+| Barbarismo | `jhojanalvarez71/ga-ms-barbarismo:latest` |
 | Usuarios | `sofigarcia30/ga-ms-usuarios:latest` |
 
 ---
@@ -168,6 +168,69 @@ docker compose logs -f
 ```bash
 docker compose restart nombre-del-servicio
 ```
+
+---
+
+## Reconstruir imágenes desde fuente (mantenedores)
+
+> Esta sección es solo para quien modifica un microservicio y necesita regenerar su imagen.
+> Para *usar* el sistema no hace falta nada de esto: las imágenes se bajan de Docker Hub.
+
+### ⚠️ Java 21 obligatorio (gotcha de Lombok con JDK 25)
+
+El estándar del equipo es **Java 21**. Si tu máquina tiene **JDK 25** como `java`/`JAVA_HOME`
+por defecto, el build local **falla** con errores tipo `cannot find symbol setXxx(...)`:
+Lombok (1.18.38) **no soporta JDK 25** y no genera los setters/getters.
+
+Dos formas de evitarlo:
+
+1. **Instalá Temurin 21** y apuntá `JAVA_HOME` a él antes de compilar:
+   ```bash
+   java -version   # debe decir 21.x
+   ```
+2. **O compilá dentro de un contenedor con JDK 21** (independiente de tu entorno).
+   Útil cuando el Dockerfile espera el `.jar` ya construido (ej. reportes):
+   ```bash
+   docker run --rm \
+     -v "$PWD":/app -v "$HOME/.m2":/root/.m2 -w /app \
+     maven:3.9.6-eclipse-temurin-21 mvn -B -DskipTests package
+   ```
+
+### Cocina: inicializar el submódulo antes del build
+
+`ga-ms-cocina` trae `ga-lib-security` como **submódulo git**. Si está sin inicializar,
+el `docker build` falla con `Non-readable POM .../ga-lib-security/pom.xml`:
+
+```bash
+cd ga-ms-cocina
+git submodule update --init --recursive
+docker build -t andres2515/ga-ms-cocina:latest .
+```
+
+### Probar una imagen recién construida sin publicarla
+
+Si la buildeás con el **mismo tag** del compose y recreás **sin pull**, Docker usa tu
+imagen local (no va a Docker Hub):
+
+```bash
+docker compose up -d --no-deps --force-recreate cocina
+```
+
+### Regla del secreto JWT (`SECURITY_SECRET`)
+
+- Lo definen **solo** `usuarios` (firma), `gateway` (valida) y `cocina`, **siempre vía
+  `${SECURITY_SECRET}` desde `.env`** — nunca hardcodeado.
+- `cocina` lo necesita al arrancar porque su `ga-lib-security` pinneado construye
+  `JwtConfig` de forma incondicional, aunque en runtime autentique por headers.
+- El resto (`restaurante`, `inventario`, `barbarismo`, `reportes`) es **gateway-trust**
+  y **no** define el secreto.
+- Para verificar que está alineado:
+  ```bash
+  docker compose exec cocina   printenv SECURITY_SECRET
+  docker compose exec usuarios printenv SECURITY_SECRET
+  docker compose exec gateway  printenv SECURITY_SECRET
+  ```
+  Los tres deben imprimir el mismo valor; si no, el login falla con 401.
 
 ---
 

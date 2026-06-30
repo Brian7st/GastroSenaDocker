@@ -1,2 +1,5 @@
 # Secretos locales — nunca subir
 .env
+
+# Backups locales del compose
+*.bak

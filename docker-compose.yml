@@ -1,4 +1,4 @@
-services:
+﻿services:
 
   # INFRAESTRUCTURA COMPARTIDA
   rabbitmq:
@@ -22,6 +22,7 @@ services:
   zipkin:
     image: openzipkin/zipkin:3
     container_name: gastrosena-zipkin
+    restart: unless-stopped
     ports:
       - "9412:9411"     # panel: http://localhost:9412 (9411 lo ocupa otro stack)
     healthcheck:
@@ -39,6 +40,7 @@ services:
   restaurante-db:
     image: mysql:8.0
     container_name: gastrosena-restaurante-db
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: modulo_restaurante
@@ -58,6 +60,7 @@ services:
   inventario-db:
     image: mysql:8.0
     container_name: gastrosena-inventario-db
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root_secret
       MYSQL_DATABASE: inventario_v2
@@ -80,6 +83,7 @@ services:
   cocina-db:
     image: mysql:8.0
     container_name: gastrosena-cocina-db
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: "Carlos2515."
       MYSQL_DATABASE: ProyectoFormativo
@@ -99,6 +103,7 @@ services:
   barbarismo-db:
     image: mysql:8.0
     container_name: gastrosena-barbarismo-db
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: admin1
       MYSQL_DATABASE: ProyectoFormativo
@@ -118,6 +123,7 @@ services:
   usuarios-db:
     image: mysql:8.0
     container_name: gastrosena-usuarios-db
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: usuarios_db
@@ -146,18 +152,20 @@ services:
       DB_USERNAME: root
       DB_PASSWORD: root
       SPRING_DATASOURCE_URL: jdbc:mysql://restaurante-db:3306/modulo_restaurante?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
+      # RabbitMQ gestionado (CloudAMQP) — valores desde .env, con fallback al broker local.
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-guest}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_SSL: ${RABBITMQ_SSL:-false}
     # Sin puerto al host: solo accesible vía gateway dentro de gastrosena-net.
     expose:
       - "8080"
     depends_on:
       restaurante-db:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    restart: on-failure
+    restart: unless-stopped
     networks:
       gastrosena-net:
         aliases:
@@ -172,6 +180,13 @@ services:
       DB_PASSWORD: inventario
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
       SPRING_PROFILES_ACTIVE: default
+      # Microservicio de reportes: inventario le delega la generaciÃ³n de documentos (PDF del GIL).
+      INVENTORY_INTEGRATIONS_REPORTES_BASE_URL: http://reportes:8083
+      # SMTP para enviar el GIL al proveedor por correo (valores en .env).
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     expose:
       - "8081"
     depends_on:
@@ -179,7 +194,7 @@ services:
         condition: service_healthy
       zipkin:
         condition: service_healthy
-    restart: on-failure
+    restart: unless-stopped
     networks:
       - gastrosena-net
 
@@ -190,17 +205,21 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://cocina-db:3306/ProyectoFormativo?createDatabaseIfNotExist=true&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: "Carlos2515."
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: guest
-      SPRING_RABBITMQ_PASSWORD: guest
+      # RabbitMQ gestionado (CloudAMQP) — valores desde .env, fallback al broker local.
+      SPRING_RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      SPRING_RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
+      SPRING_RABBITMQ_VIRTUAL_HOST: ${RABBITMQ_VHOST:-/}
+      SPRING_RABBITMQ_SSL_ENABLED: ${RABBITMQ_SSL:-false}
       PORT: 8082
-      # Mismo secreto que firma usuarios. Sobreescribe el security.secret del
-      # application.yaml de cocina para que la validación de JWT cuadre.
+      # cocina autentica por headers en runtime, pero su ga-lib-security pinneado
+      # construye JwtConfig incondicionalmente: el secreto DEBE resolverse al
+      # arrancar. Mismo valor que usuarios/gateway, inyectado desde .env.
       SECURITY_SECRET: ${SECURITY_SECRET:?defina SECURITY_SECRET en GastroSenaDocker/.env}
       # Rol asumido cuando NO llega el header X-User-Rol (acceso directo a :8082
-      # sin pasar por el gateway). Vacío ("") = cerrado: en Swagger hay que declarar
-      # el rol con el botón Authorize (X-User-Rol). El menú público no se ve afectado.
+      # sin pasar por el gateway). VacÃ­o ("") = cerrado: en Swagger hay que declarar
+      # el rol con el botÃ³n Authorize (X-User-Rol). El menÃº pÃºblico no se ve afectado.
       SECURITY_DEV_FALLBACK_ROL: ""
     # Publicado al host para acceder a Swagger directo: http://localhost:8082/swagger-ui/index.html
     ports:
@@ -208,9 +227,17 @@ services:
     depends_on:
       cocina-db:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    restart: on-failure
+    restart: unless-stopped
+    networks:
+      - gastrosena-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: gastrosena-cloudflared
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TOKEN}
+    depends_on:
+      - gateway
+    restart: unless-stopped
     networks:
       - gastrosena-net
 
@@ -221,18 +248,19 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://barbarismo-db:3306/ProyectoFormativo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: admin1
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: guest
-      SPRING_RABBITMQ_PASSWORD: guest
+      # RabbitMQ gestionado (CloudAMQP) — valores desde .env, fallback al broker local.
+      SPRING_RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      SPRING_RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
+      SPRING_RABBITMQ_VIRTUAL_HOST: ${RABBITMQ_VHOST:-/}
+      SPRING_RABBITMQ_SSL_ENABLED: ${RABBITMQ_SSL:-false}
     expose:
       - "8086"
     depends_on:
       barbarismo-db:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    restart: on-failure
+    restart: unless-stopped
     networks:
       - gastrosena-net
 
@@ -252,7 +280,7 @@ services:
     depends_on:
       usuarios-db:
         condition: service_healthy
-    restart: on-failure
+    restart: unless-stopped
     networks:
       - gastrosena-net
 
@@ -262,6 +290,7 @@ services:
   reportes-db:
     image: mysql:8.0
     container_name: gastrosena-reportes-db
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: "12345"
       MYSQL_DATABASE: gastrosena_reportes
@@ -298,7 +327,7 @@ services:
         condition: service_healthy
       usuarios:
         condition: service_started
-    restart: on-failure
+    restart: unless-stopped
     networks:
       - gastrosena-net
 
@@ -308,18 +337,16 @@ services:
 
 
   gateway:
-    build:
-      context: ../ApigatewayGastrosena/api-gateway
-      dockerfile: Dockerfile
+    image: stiven77/api-gateway:latest
     container_name: gastrosena-gateway
     environment:
       GATEWAY_PORT: 8088
       # MISMO secreto que usa usuarios para firmar el JWT. Se inyecta desde .env
-      # (no se hardcodea). Falla el arranque si no está definido.
+      # (no se hardcodea). Falla el arranque si no estÃ¡ definido.
       SECURITY_SECRET: ${SECURITY_SECRET:?defina SECURITY_SECRET en GastroSenaDocker/.env}
       SECURITY_EXPIRATION_MS: 3600000
       SECURITY_REFRESH_THRESHOLD_MS: 300000
-      CORS_ALLOWED_ORIGINS: "http://localhost:4200"
+      CORS_ALLOWED_ORIGINS: "http://localhost:4200,https://app.gastrosena.uk"
       SVC_USUARIOS_URI: http://usuarios:8081
       SVC_INVENTARIO_URI: http://inventario:8081
       SVC_RESTAURANTE_URI: http://restaurante:8080
@@ -335,7 +362,7 @@ services:
       - barbarismo
       - usuarios
       - reportes
-    restart: on-failure
+    restart: unless-stopped
     networks:
       - gastrosena-net
 
@@ -344,6 +371,7 @@ services:
   frontend:
     image: stiven77/frontend-gastrosena:latest
     container_name: gastrosena-frontend
+    restart: unless-stopped
     ports:
       - "4200:4200"
     depends_on:
@@ -375,3 +403,4 @@ volumes:
 networks:
   gastrosena-net:
     driver: bridge
+
