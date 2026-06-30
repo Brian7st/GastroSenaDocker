@@ -1,8 +1,6 @@
 services:
 
   # INFRAESTRUCTURA COMPARTIDA
-  # --------------------------------------------------------------------
-
   rabbitmq:
     image: rabbitmq:3-management
     container_name: gastrosena-rabbitmq
@@ -35,10 +33,8 @@ services:
     networks:
       - gastrosena-net
 
-  # --------------------------------------------------------------------
   # BASES DE DATOS (una por microservicio — aislamiento total)
   # Host ports escalonados para no chocar si tenés MySQL local.
-  # --------------------------------------------------------------------
 
   restaurante-db:
     image: mysql:8.0
@@ -140,9 +136,7 @@ services:
     networks:
       - gastrosena-net
 
-  # --------------------------------------------------------------------
   # MICROSERVICIOS BACKEND
-  # --------------------------------------------------------------------
 
   restaurante:
     image: eidertapasco/ga-ms-restaurante:latest
@@ -262,10 +256,8 @@ services:
     networks:
       - gastrosena-net
 
-  # --------------------------------------------------------------------
   # REPORTES (ga-ms-reportes) — lee datos de los demás microservicios por la red
   # Imagen local: construir con  ./mvnw -DskipTests package  +  docker build -t ga-ms-reportes:latest .
-  # --------------------------------------------------------------------
 
   reportes-db:
     image: mysql:8.0
@@ -310,11 +302,10 @@ services:
     networks:
       - gastrosena-net
 
-  # --------------------------------------------------------------------
   # API GATEWAY — ÚNICO PUNTO DE ENTRADA
   # Valida el JWT, inyecta X-User-* downstream y enruta por DNS de Docker.
   # Es el único servicio (además del front) que expone puerto al host.
-  # --------------------------------------------------------------------
+
 
   gateway:
     build:
@@ -348,9 +339,7 @@ services:
     networks:
       - gastrosena-net
 
-  # --------------------------------------------------------------------
   # FRONTEND
-  # --------------------------------------------------------------------
 
   frontend:
     image: stiven77/frontend-gastrosena:latest
